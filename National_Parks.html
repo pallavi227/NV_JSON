@@ -146,19 +146,17 @@ a:hover {
             <div id="vis">
             </div>
             <div id="np-list"></div>
-            <!--div id="np-details">
-                </div-->
-                <div id="np-stats">
-                    <!--h1></h1>
-                        <button></button-->
-                </div>
-                </div>
-                <script>
+            <div id="np-stats">
+                <!--h1></h1>
+                <button></button-->
+            </div>
+        </div>
+        <script>
 
-                    /* Globals and SVG */
-                    /* =============== */
+            /* Globals and SVG */
+            /* =============== */
 
-                    var projection;
+            var projection;
 var geoPath;
 
 
@@ -177,7 +175,6 @@ var end_pos = void 0;
 var dragStarted = false;
 
 /* ========= */
-
 function hoverNPArea(d) {
     var div = document.getElementById('tooltip');
     div.style.left = event.pageX +'px';
@@ -237,7 +234,6 @@ function getStateString(states) {
     }
     return st;
 }
-
 
 function drawBarPlot(yrStats)
 {
@@ -342,6 +338,11 @@ function showGraphDetails(np) {
     d3.select("#np-list *").remove();
     d3.select('#np-list')
         .selectAll('.np-card').remove();
+    svg.selectAll('circle')
+        .each(function(d) {
+            d3.select(this)
+                .attr("fill","steelblue");
+        });
 
     d3.select("#container").append("np-stats");
     d3.select("#np-stats")
@@ -402,8 +403,8 @@ function mousedown(np) {
         .style('stroke', 'steelblue')
         .style('fill', 'steelblue');
     d3.select(this).raise()
-        .style('stroke', 'tomato')
-        .style('fill', 'tomato');
+        .style('stroke', 'yellow')
+        .style('fill', 'yellow');
 
     d3.selectAll('#np-list *').remove();
     d3.select('#np-list')
@@ -430,7 +431,7 @@ function mousedown(np) {
 
 function dragStart() {
     start_pos = d3.mouse(this);
-    //console.log("start:" + start_pos)
+    console.log("start:" + start_pos)
 }
 
 function dragMove() {
@@ -445,22 +446,26 @@ function dragEnd() {
     d3.selectAll('#np-list *').remove();
     d3.select('#np-list')
         .selectAll('.np-card').remove();
+    svg.selectAll('circle')
+        .style('stroke', 'steelblue')
+        .style('fill', 'steelblue');
 
     d3.select("#np-list")
         .append("h1")
         .append("div");
 
     var npArr = [];
-    //console.log("end:" + end_pos)
-    var polygon = [start_pos, [start_pos[0], end_pos[1]], [start_pos[1], end_pos[0]], end_pos];
+    console.log("end:" + end_pos)
+    var polygon = [start_pos, [start_pos[0], end_pos[1]], [end_pos[0], start_pos[1]], end_pos];
     console.log("Poly" + polygon)
     svg.selectAll('circle')
         .each(function(d) {
             pt = d3.select(this);
-            var ptRect = pt.node().getBoundingClientRect();
-            if (d3.polygonContains(polygon, [ptRect.x, ptRect.y]))
+            var cPos = [pt.node().getAttribute('cx') , pt.node().getAttribute('cy')];  
+            if (d3.polygonContains(polygon, cPos))
             {
-                pt.attr("fill","yellow");
+                pt.style("fill","yellow")
+                  .style("stroke", "yellow");
                 npArr.push(pt.datum());
             }
         });
@@ -541,14 +546,10 @@ function drawNPPoint(npData) {
             if (p == null)
                 console.log(d.title);
             else
-                return p[0];
-            /*var lg = d.geometry.coordinates[0];
-            var lat = d.geometry.coordinates[1];
-            var p = projection([lg, lat]);
-            if (p == null)
-                console.log(d.properties.unit_name);
-            else
-                return p[0];*/
+            {
+                //console.log(d.title + ", " + p[0] + ", " + p[1] + ",");
+                return p[0]
+            };
         })
         .attr('cy', function(d) {
             var p = projection([d.coordinates.longitude, d.coordinates.latitude]); 
@@ -556,13 +557,6 @@ function drawNPPoint(npData) {
                 console.log(d.title);
             else
                 return p[1];
-            /*var lg = d.geometry.coordinates[0];
-            var lat = d.geometry.coordinates[1];
-            var p = projection([lg, lat]);
-            if (p == null)
-                console.log(d.properties.unit_name);
-            else
-                return p[1];*/
         })
 
         .attr('r', 5)
@@ -578,104 +572,94 @@ function prepStatesData(usTopology) {
 
 function prepNPData(npTopology) {
     topFeat = topojson.feature(npTopology, npTopology.objects["nps-geo"]);
+    return topFeat;
+} // prepNPData()
 
-    /*var feats = topFeat.features;
-    var i = 0;
-    while (i < feats.length) {
-                                             if (feats[i].properties.unit_type != "National Park")
-                                             {
-                                             feats.splice(i, 1);
-                                             } 
-                                             else {
-                                             ++i;
-                                             }
-                                             }
+/* Load and build steps */
+/* ==================== */
 
-                                             topFeat.features = feats;*/
-                                             return topFeat;
-                                             } // prepNPData()
+function ready(error, us) {
+    if (error) throw error;
 
-                                             /* Load and build steps */
-                                             /* ==================== */
+    canChange = 1;
+    d3.selectAll('#np-list *').remove();
+    svg.selectAll('circle')
+        .style('stroke', 'steelblue')
+        .style('fill', 'steelblue');
 
-                                             function ready(error, us) {
-                                             if (error) throw error;
+    var us = prepData(us);
 
-                                             canChange = 1;
-                                             d3.selectAll('#np-list *').remove();
+    console.log(us);
 
-                                             var us = prepData(us);
+    drawGeo(us);
+} // ready()
 
-                                             console.log(us);
+var dragBehaviour = d3.drag()
+    .on("start", dragStart)
+    .on("drag", dragMove)
+    .on("end", dragEnd);
 
-                                             drawGeo(us);
-                                             } // ready()
+function initMap()
+{
+    d3.select("#np-stats *").remove();
+    d3.select("#np-stats h1").remove();
+    d3.select('#np-stats')
+        .selectAll('.np-card').remove();
+    d3.select('#np-stats')
+        .selectAll('svg *').remove();
+    d3.select('#np-stats')
+        .selectAll('svg').remove();
 
-                                             var dragBehaviour = d3.drag()
-                                             .on("start", dragStart)
-                                             .on("drag", dragMove)
-                                             .on("end", dragEnd);
+    svg = d3.select('#vis')
+        .append('svg')
+        .attr('width', width + margin.left + margin.top)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+    //.call(d3.zoom().on("zoom", function () {
+    //svg.attr("transform", d3.event.transform)
+    //}))
+        .call(dragBehaviour)
+        .attr('transform', 'translate(' + margin.left + ', ' + margin.top + ')');
 
-                                             function initMap()
-                                             {
-                                             d3.select("#np-stats *").remove();
-                                             d3.select("#np-stats h1").remove();
-                                             d3.select('#np-stats')
-                                             .selectAll('.np-card').remove();
-                                             d3.select('#np-stats')
-                                             .selectAll('svg *').remove();
-                                             d3.select('#np-stats')
-                                             .selectAll('svg').remove();
+    drawGeo(us);
+    drawNPArea(np_topo);
+    drawNPLine(np_line_topo);
+    drawNPPoint(np_point_topo);
+}
 
-                                             svg = d3.select('#vis')
-                                             .append('svg')
-                                             .attr('width', width + margin.left + margin.top)
-                                             .attr('height', height + margin.top + margin.bottom)
-                                             .append('g')
-                                             //.call(d3.zoom().on("zoom", function () {
-                                             //svg.attr("transform", d3.event.transform)
-                                             //}))
-                                             .call(dragBehaviour)
-                                             .attr('transform', 'translate(' + margin.left + ', ' + margin.top + ')');
+// Load data sources
+function init()
+{
 
-                                             drawGeo(us);
-                                             drawNPArea(np_topo);
-                                             drawNPLine(np_line_topo);
-                                             drawNPPoint(np_point_topo);
-                                             }
+    var json_files = ["https://pallavi227.github.io/NV_JSON/states-10m.json",
+         "https://pallavi227.github.io/NV_JSON/nps-boundaries.json",
+         "https://pallavi227.github.io/NV_JSON/nps-line.json",
+         "https://pallavi227.github.io/NV_JSON/NP_Points.json"];
 
-                                             // Load data sources
-                                             function init()
-                                             {
+    var csv_files = ["https://pallavi227.github.io/NV_JSON/Annual_Visitation_By_Park.csv"];
+    var promises = [];
 
-                                             var json_files = ["https://pallavi227.github.io/NV_JSON/states-10m.json",
-                                             "https://pallavi227.github.io/NV_JSON/nps-boundaries.json",
-                                             "https://pallavi227.github.io/NV_JSON/nps-line.json",
-                                             "https://pallavi227.github.io/NV_JSON/NP_Points.json"];
+    json_files.forEach(function(url) {
+        promises.push(d3.json(url))
+    });
 
-                                             var csv_files = ["https://pallavi227.github.io/NV_JSON/Annual_Visitation_By_Park.csv"];
-                                             var promises = [];
+    csv_files.forEach(function(url) {
+        promises.push(d3.csv(url))
+    });
 
-                                             json_files.forEach(function(url) {
-                                             promises.push(d3.json(url))
-                                             });
+    Promise.all(promises).then(function(values) {
+        us = prepStatesData(values[0]);
 
-                                             csv_files.forEach(function(url) {
-                                             promises.push(d3.csv(url))
-                                             });
+        np_topo = prepNPData(values[1]);
 
-                                             Promise.all(promises).then(function(values) {
-                                             us = prepStatesData(values[0]);
+        np_line_topo = prepNPData(values[2]);
 
-                                             np_topo = prepNPData(values[1]);
+        np_point_topo = values[3];
+        np_visit_stat = values[4];
+        initMap();
+    });
+}
 
-                                             np_line_topo = prepNPData(values[2]);
-
-                                             np_point_topo = values[3];
-                                             np_visit_stat = values[4];
-                                             initMap();
-                                             });
-                                             }
-                                             init();
+init();
                 </script>
 </html>
